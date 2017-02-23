@@ -12,7 +12,6 @@ template '/tmp/cwlogs.cfg' do
   variables ({
     :logfiles => node['cwlogs']['logfiles']
   })
-  notifies :restart, 'service[awslogs]'
 end
 
 directory '/opt/aws/cloudwatch' do
