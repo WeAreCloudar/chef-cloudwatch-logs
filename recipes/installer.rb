@@ -25,10 +25,22 @@ remote_file '/opt/aws/cloudwatch/awslogs-agent-setup.py' do
   action node['cwlogs']['attempt_upgrade'] ? :create : :create_if_missing
 end
 
+remote_file "/opt/aws/cloudwatch/AgentDependencies.tar.gz" do
+  source 'https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/AgentDependencies.tar.gz'
+  mode '0700'
+  action :create
+  notifies :run, "execute[Extract_awslogs_agent_dependencies]", :immediately
+end
+
+execute 'Extract_awslogs_agent_dependencies' do
+  command "tar xvf /opt/aws/cloudwatch/AgentDependencies.tar.gz -C /opt/aws/cloudwatch/"
+  action :nothing
+end
+
 proxy_env = ENV.select { |k, v| %w(http_proxy https_proxy no_proxy).include?(k) && !v.empty? }
 proxy_args = proxy_env.map { |k,v| "--#{k.gsub('_','-')} '#{v}'" }.join(' ')
 execute 'Install CloudWatch Logs agent' do
-  command "/opt/aws/cloudwatch/awslogs-agent-setup.py -n -r #{node['cwlogs']['region']} -c /tmp/cwlogs.cfg #{proxy_args}"
+  command "/opt/aws/cloudwatch/awslogs-agent-setup.py -n -r #{node['cwlogs']['region']} -c /tmp/cwlogs.cfg #{proxy_args} --dependency-path /opt/aws/cloudwatch/AgentDependencies"
   guard_interpreter :bash
   not_if 'pgrep -f awslogs-agent-setup >/dev/null'
 end
